@@ -11,11 +11,14 @@ const app = express();
 // Enable CORS
 const cors = require('cors');
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://bulk-mail-3cejn7u5r-aswin-3559.vercel.app',
+    'https://bulk-mail-ochre.vercel.app'
+];
+
 app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        'https://bulk-mail-ochre.vercel.app'
-    ],
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
