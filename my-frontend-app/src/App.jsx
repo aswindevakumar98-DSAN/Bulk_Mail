@@ -8,6 +8,8 @@ function App() {
   const [msg, setmsg] = useState("")
   const [status, setstatus] = useState(false)
   const [emailList, setemailList] = useState([])
+  const API_URL = import.meta.env.VITE_API_URL;
+
 
   function handleChange(event) {
     setmsg(event.target.value)
@@ -15,7 +17,7 @@ function App() {
 
   function send() {
     setstatus(true)
-    axios.post('http://localhost:3000/send-email', { msg: msg, emailList: emailList })
+    axios.post(`${API_URL}/send-email`, { msg: msg, emailList: emailList })
       .then(function (data) {
         setstatus(false)
       })
