@@ -7,152 +7,96 @@ require('dotenv').config();
 
 const app = express();
 
-// 1. CORS configuration
+
+// Enable CORS
+
 const allowedOrigins = [
     'http://localhost:5173',
     'https://bulk-mail-3cejn7u5r-aswin-3559.vercel.app',
     'https://bulk-mail-ochre.vercel.app'
 ];
 
-if (process.env.CLIENT_URL) {
-    allowedOrigins.push(process.env.CLIENT_URL);
-}
-
 app.use(cors({
     origin: allowedOrigins,
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// 2. Parse JSON
+// Parse JSON data
 app.use(express.json());
 
-// 3. Define Credential model ONCE, outside the API route
-const credentialSchema = new mongoose.Schema({
-    user: String,
-    pass: String
-}, {
-    collection: 'bulkmail'
+// Connect to MongoDB
+mongoose.connect('mongodb+srv://aswin03kool_db_user:bzBTNcSDMcFKxC5q@aswin.y0zfm68.mongodb.net/passkey').then(() => {
+  console.log('Connected to MongoDB');
+}).catch((error) => {
+  console.error('Error connecting to MongoDB:', error);
 });
 
-const Credential =
-    mongoose.models.Credential ||
-    mongoose.model('Credential', credentialSchema);
+// Gmail SMTP transporter
 
-// 4. Test backend
+
+// Test backend
 app.get('/', (req, res) => {
-    res.send('Bulkmail Backend is Running!');
+  res.send('Bulkmail Backend is Running!');
 });
 
-app.get('/api/health', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Bulkmail API is running',
-        database: mongoose.connection.readyState === 1
-            ? 'Connected'
-            : 'Disconnected'
-    });
-});
+// Send email API
 
-// 5. Send email API
 app.post('/send-email', async (req, res) => {
-    try {
-        const { msg, emailList } = req.body;
+  try {
+    const msg = req.body.msg;
+    const emailList = req.body.emailList;
 
-        // Validate message
-        if (!msg) {
-            return res.status(400).json({
-                success: false,
-                message: 'Message is required'
-            });
-        }
+    const credential = mongoose.model('Credential', {}, 'bulkmail');
+    const data = await credential.find();
 
-        // Validate email list
-        if (!Array.isArray(emailList) || emailList.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email list is empty or invalid'
-            });
-        }
-
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-            return res.status(503).json({
-                success: false,
-                message: 'Database is not connected'
-            });
-        }
-
-        // Fetch Gmail credentials
-        const data = await Credential.find().limit(1);
-
-        if (!data.length || !data[0].user || !data[0].pass) {
-            return res.status(500).json({
-                success: false,
-                message: 'Email credentials not found'
-            });
-        }
-
-        // Configure Gmail transporter
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: data[0].user,
-                pass: data[0].pass
-            }
-        });
-
-        // Send emails
-        for (const recipient of emailList) {
-
-            if (!recipient.A) {
-                continue;
-            }
-
-            const mailOptions = {
-                from: data[0].user,
-                to: recipient.A,
-                subject: 'Test Email',
-                text: msg
-            };
-
-            const info = await transporter.sendMail(mailOptions);
-
-            console.log(
-                'Email sent:',
-                recipient.A,
-                info.response
-            );
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: 'Emails sent successfully'
-        });
-
-    } catch (error) {
-        console.error('EMAIL SENDING ERROR:', error);
-
-        return res.status(500).json({
-            success: false,
-            message: 'Error sending emails'
-        });
+    if (!data || data.length === 0) {
+      return res.status(500).send('No email credentials found');
     }
-});
 
-// 6. Connect MongoDB and start server
-const PORT = process.env.PORT || 3000;
-
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log('Connected to MongoDB');
-
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log(`Server is running on port ${PORT}`);
-        });
-    })
-    .catch((error) => {
-        console.error('MongoDB connection failed:', error);
-        process.exit(1);
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: data[0].toJSON().user,
+        pass: data[0].toJSON().pass
+      }
     });
 
+    // Validate message
+    if (!msg) {
+      return res.status(400).send('Message is required');
+    }
+
+    // Validate email list
+    if (!Array.isArray(emailList) || emailList.length === 0) {
+      return res.status(400).send('Email list is empty or invalid');
+    }
+
+    // Send emails
+    for (let i = 0; i < emailList.length; i++) {
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: emailList[i].A,
+        subject: 'Test Email',
+        text: msg
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+
+      console.log('Email sent:', emailList[i].A, info.response);
+    }
+
+    res.status(200).send('All emails sent successfully');
+
+  } catch (error) {
+    console.error('Email error:', error);
+    res.status(500).send('Error sending email');
+  }
+});
+
+
+// Start server
+app.listen(3000, () => {
+  console.log('Server is running on port 3000');
+});
