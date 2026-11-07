@@ -9,7 +9,6 @@ const app = express();
 
 
 // Enable CORS
-const cors = require('cors');
 
 const allowedOrigins = [
     'http://localhost:5173',
