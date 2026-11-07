@@ -17,9 +17,9 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Parse JSON data
@@ -42,7 +42,7 @@ app.get('/', (req, res) => {
 
 // Send email API
 
-app.post('/send-email', async (req, res) => {
+app.post('/send-email', async (req, res) => { 
   try {
     const msg = req.body.msg;
     const emailList = req.body.emailList;
